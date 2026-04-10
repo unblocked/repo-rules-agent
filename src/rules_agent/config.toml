@@ -1,0 +1,222 @@
+# repo-rules-agent configuration
+#
+# All tuneable values in one place. Override per-environment via:
+#   - Environment variables:  RULES_AGENT_LLM__EXTRACTION_MODEL=...
+#   - Kubernetes ConfigMap:   mount this file
+#
+# Env vars take precedence over this file.
+
+# ── LLM models & token budgets ──────────────────────────────
+[llm]
+base_url = "http://localhost:11434/v1"
+api_key_env = "OLLAMA_API_KEY"           # env var name; Ollama ignores the value
+extraction_model = "gemma4"
+extraction_max_tokens = 16384
+judge_model = "gemma4"
+judge_max_tokens = 4096
+
+# ── Content chunking for large files ────────────────────────
+[chunking]
+threshold_chars = 12000          # below this, file is sent whole
+chunk_size_chars = 10000         # target size per chunk
+min_chars_per_chunk = 100        # avoids tiny fragments
+markdown_extensions = [".md", ".mdc", ".markdown"]
+
+# ── Deduplication & conflict detection ──────────────────────
+[dedup]
+similarity_threshold = 0.85      # above this = duplicate
+conflict_lower_bound = 0.5       # between this and threshold = potential conflict
+
+# ── Output & display ────────────────────────────────────────
+[output]
+default_format = "table"
+metric_good_threshold = 0.8      # green in eval display
+metric_warn_threshold = 0.6      # yellow (below = red)
+low_score_detail_threshold = 0.8 # show detailed reasoning below this F1
+output_filename = "repo_rules.json"
+
+# ── Rule model defaults ─────────────────────────────────────
+[rule_defaults]
+id_hash_length = 12              # hex chars for deterministic rule ID
+
+# ── File discovery ───────────────────────────────────────────
+[discovery]
+max_file_size_bytes = 524288     # 512 KB
+max_files_per_tier = 50
+include_max_depth = 5            # @include directive recursion limit
+include_max_length = 256         # max line length to treat as @include
+
+skip_dirs = [
+    "node_modules",
+    "vendor",
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "dist",
+    "build",
+]
+
+# ── Tier 1: Root-level AI agent instruction files ─────────────
+# Agent instruction files first (highest priority), then human docs
+# that commonly contain actionable coding rules (PR review guidance,
+# style guides, architecture constraints, test conventions).
+[discovery.tier1]
+files = [
+    # Universal standards (AAIF / Linux Foundation)
+    "AGENTS.override.md",           # Codex override (highest priority)
+    "AGENTS.md",
+    "agents.md",
+    # Tool-specific primary files
+    "CLAUDE.md",
+    "claude.md",
+    "GEMINI.md",
+    "gemini.md",
+    "AGENT.md",                     # Amp/Sourcegraph
+    "agent.md",
+    # Conventions (Aider, general)
+    "CONVENTIONS.md",
+    "conventions.md",
+    # Legacy single-file dotfiles
+    ".cursorrules",
+    ".windsurfrules",
+    ".clinerules",
+    ".continuerules",
+    ".roorules",
+    ".goosehints",                  # Goose (Block) — AAIF founding project
+    ".augment-guidelines",          # Augment Code
+    ".rules",                       # Zed Editor (highest priority in Zed)
+    # Replit
+    "replit.md",
+    # Human docs that commonly contain actionable coding rules
+    "CONTRIBUTING.md",
+    "contributing.md",
+    "ARCHITECTURE.md",
+    "architecture.md",
+    "STYLEGUIDE.md",
+    "STYLE.md",
+    "CODE_STYLE.md",
+    "TESTING.md",
+]
+
+# ── Tier 2: Tool-specific config paths ────────────────────────
+[discovery.tier2]
+files = [
+    ".claude/CLAUDE.md",
+    ".github/copilot-instructions.md",
+    ".junie/guidelines.md",         # JetBrains Junie
+    ".idx/airules.md",              # Firebase Studio
+    ".gemini/styleguide.md",        # Gemini Code Assist style guide
+    ".vscode/cody.json",
+]
+
+# ── Tier 3: Rules directories (dir + glob pattern) ──────────
+# Excluded: .claude/commands/, .github/prompts/ — those are
+#           slash commands / prompt templates, not coding rules
+
+[[discovery.tier3.dirs]]
+path = ".cursor/rules"
+pattern = "*.mdc"
+
+[[discovery.tier3.dirs]]
+path = ".cursor/rules"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".github/instructions"
+pattern = "*.instructions.md"
+
+[[discovery.tier3.dirs]]
+path = ".github/instructions"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".windsurf/rules"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".clinerules"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".continue/rules"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".tabnine/guidelines"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".aiassistant/rules"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".qdeveloper"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".roo/rules"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".roo/rules-code"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".roo/rules-architect"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".roo/rules-ask"
+pattern = "*.md"
+
+[[discovery.tier3.dirs]]
+path = ".roo/rules-debug"
+pattern = "*.md"
+
+# Amazon Q Developer
+[[discovery.tier3.dirs]]
+path = ".amazonq/rules"
+pattern = "*.md"
+
+# Augment Code
+[[discovery.tier3.dirs]]
+path = ".augment/rules"
+pattern = "*.md"
+
+# Antigravity (Codeium next-gen)
+[[discovery.tier3.dirs]]
+path = ".agent/rules"
+pattern = "*.md"
+
+# Agent supplementary docs (topic-split AGENTS.md files)
+[[discovery.tier3.dirs]]
+path = ".agents"
+pattern = "*.md"
+
+# Claude Code path-specific rules
+[[discovery.tier3.dirs]]
+path = ".claude/rules"
+pattern = "*.md"
+
+# Agent Skills (open standard — .github/skills is recommended,
+# .claude/skills is legacy/backward-compat)
+[[discovery.tier3.dirs]]
+path = ".github/skills"
+pattern = "**/SKILL.md"
+
+[[discovery.tier3.dirs]]
+path = ".claude/skills"
+pattern = "**/SKILL.md"
+
+# ── Tier 4: Recursive patterns (lowest priority) ────────────
+[discovery.tier4]
+patterns = [
+    "**/AGENTS.override.md",
+    "**/AGENTS.md",
+    "**/AGENT.md",
+    "**/CLAUDE.md",
+    "**/GEMINI.md",
+    "**/.rules/*",
+    "**/.agents/*.md",
+]

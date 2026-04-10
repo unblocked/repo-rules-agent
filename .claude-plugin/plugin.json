@@ -1,0 +1,5 @@
+{
+  "name": "repo-rules",
+  "description": "Extract and query AI coding rules from repositories",
+  "version": "0.7.1"
+}

@@ -1,0 +1,39 @@
+[build-system]
+build-backend = 'poetry.core.masonry.api'
+requires = ['poetry-core']
+
+[tool.black]
+extend-exclude = '__pycache__'
+include = '\.pyi?$'
+line-length = 120
+
+[tool.poetry]
+name = 'repo-rules-agent'
+version = "0.9.0"
+description = 'Extract and index AI coding instructions from rules files'
+authors = []
+
+[tool.poetry.dependencies]
+python = ">=3.10.12,<3.14"
+pydantic = ">=2.5.3"
+pydantic-settings = ">=2.1.0"
+typer = ">=0.9.0"
+rich = ">=13.0.0"
+openai = ">=1.68.0"
+chonkie = {version = ">=1.0.0", extras = ["markdown"]}
+
+[tool.poetry.group.dev.dependencies]
+black = '^24'
+pytest = '^8'
+pytest-custom-exit-code = "^0"
+
+[tool.poetry.scripts]
+repo-rules-agent = "rules_agent.cli:app"
+
+[[tool.poetry.packages]]
+from = 'src'
+include = 'rules_agent'
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
