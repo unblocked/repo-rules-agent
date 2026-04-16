@@ -20,10 +20,7 @@ cp .env.example .env
 # Edit .env with your API keys
 ```
 
-The `.env` file is gitignored and loaded automatically via two mechanisms:
-
-- **`uv run`** loads `.env` natively before launching the command (use `--env-file` to point at a different file, or `--no-env-file` to skip)
-- **`python-dotenv`** loads `.env` inside the application at startup, so it also works when running the installed CLI directly (e.g. `repo-rules-agent index ...` without the `uv run` prefix)
+The `.env` file is gitignored and loaded automatically at startup via `python-dotenv`. Shell environment variables take precedence over `.env` values, so you can always override a `.env` setting with an explicit export.
 
 ### Providers
 
