@@ -2,6 +2,12 @@
 
 Extract and index AI coding instructions from rules files (CLAUDE.md, AGENTS.md, .cursorrules, etc.).
 
+## Dependencies
+
+- [`uv`](https://docs.astral.sh/uv/) — Python package manager
+- [`git`](https://git-scm.com/) — used for blob SHA computation during indexing
+- [Ollama](https://ollama.com/) — required if you use the default local provider; not needed if you configure OpenAI, Anthropic, or another hosted provider
+
 ## Setup
 
 ```bash
@@ -11,7 +17,7 @@ uv sync
 
 ## Configuration
 
-The tool works with any OpenAI-compatible API provider. By default, it connects to a local [Ollama](https://ollama.com/) instance, with OpenAI + Anthropic examples.
+The tool works with any OpenAI-compatible API provider. By default, it connects to a local [Ollama](https://ollama.com/) instance; OpenAI and Anthropic are also supported.
 
 Copy `.env.example` to `.env` and uncomment the provider you want to use:
 
