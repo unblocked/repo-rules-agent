@@ -33,7 +33,7 @@ The `.env` file is gitignored and loaded automatically at startup via `python-do
 **Local (Ollama — default, no API key needed):**
 
 ```bash
-ollama pull gemma4
+ollama pull qwen3-coder:30b
 uv run repo-rules-agent index /path/to/repo
 ```
 

@@ -10,9 +10,9 @@
 [llm]
 base_url = "http://localhost:11434/v1"
 api_key_env = "OLLAMA_API_KEY"           # env var name; Ollama ignores the value
-extraction_model = "gemma4"
+extraction_model = "qwen3-coder:30b"
 extraction_max_tokens = 16384
-judge_model = "gemma4"
+judge_model = "qwen3-coder:30b"
 judge_max_tokens = 4096
 
 # ── Content chunking for large files ────────────────────────
