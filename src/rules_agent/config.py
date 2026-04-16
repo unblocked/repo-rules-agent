@@ -5,10 +5,11 @@ All config lives in config.toml. Override at runtime via env vars.
 Load order (last wins):
   1. Python field defaults (fallback if TOML missing)
   2. config.toml values
-  3. Environment variables with RULES_AGENT_ prefix
+  3. .env file (loaded via python-dotenv, does not override existing env vars)
+  4. Environment variables with RULES_AGENT_ prefix
 
 Env var examples:
-    RULES_AGENT_LLM__EXTRACTION_MODEL=claude-haiku-4-5-20251001
+    RULES_AGENT_LLM__EXTRACTION_MODEL=claude-haiku-4-5
     RULES_AGENT_CHUNKING__THRESHOLD_CHARS=12000
     RULES_AGENT_DEDUP__SIMILARITY_THRESHOLD=0.85
 """
@@ -16,8 +17,11 @@ Env var examples:
 from pathlib import Path
 from typing import Tuple, Type
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
+
+load_dotenv()
 
 _CONFIG_TOML = Path(__file__).parent / "config.toml"
 

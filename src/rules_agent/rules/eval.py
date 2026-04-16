@@ -117,9 +117,11 @@ def _build_judge_tool() -> dict:
         prop.pop("default", None)
     return {
         "type": "function",
-        "name": "submit_evaluation",
-        "description": "Submit the evaluation classification for the file.",
-        "parameters": schema,
+        "function": {
+            "name": "submit_evaluation",
+            "description": "Submit the evaluation classification for the file.",
+            "parameters": schema,
+        },
     }
 
 
@@ -161,7 +163,7 @@ def _format_rules_for_judge(rules: list[Rule]) -> str:
     lines = []
     for i, rule in enumerate(rules, 1):
         lines.append(
-            f"{i}. **{rule.title}** [{rule.category}] "
+            f"{i}. **{rule.title}** [{rule.category.value}] "
             f"(severity: {rule.severity}, scope: {rule.scope})\n"
             f"   {rule.description}\n"
             f"   Languages: {', '.join(rule.languages)} | "

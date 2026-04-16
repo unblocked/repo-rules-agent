@@ -1,6 +1,6 @@
 """Tests for rules extraction."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from rules_agent.rules.extractor import (
     EXTRACTION_TOOL,
@@ -67,14 +67,14 @@ def test_mdc_file_uses_markdown_chunker():
 
 def test_extraction_tool_schema_has_required_fields():
     """Test that the tool schema defines all expected rule fields."""
-    rule_props = EXTRACTION_TOOL["parameters"]["properties"]["rules"]["items"]["properties"]
+    rule_props = EXTRACTION_TOOL["function"]["parameters"]["properties"]["rules"]["items"]["properties"]
     expected_fields = {"title", "description", "category", "tasks", "languages", "scope", "severity"}
     assert set(rule_props.keys()) == expected_fields
 
 
 def test_extraction_tool_schema_enums():
     """Test that the tool schema enums match the model."""
-    rule_props = EXTRACTION_TOOL["parameters"]["properties"]["rules"]["items"]["properties"]
+    rule_props = EXTRACTION_TOOL["function"]["parameters"]["properties"]["rules"]["items"]["properties"]
     assert "must" in rule_props["severity"]["enum"]
     assert "should" in rule_props["severity"]["enum"]
     assert "can" in rule_props["severity"]["enum"]
@@ -89,7 +89,7 @@ def test_extraction_tool_schema_enums():
 
 def test_extraction_tool_schema_excludes_source_file():
     """Test that source_file is excluded from the tool schema (set after extraction)."""
-    rule_props = EXTRACTION_TOOL["parameters"]["properties"]["rules"]["items"]["properties"]
+    rule_props = EXTRACTION_TOOL["function"]["parameters"]["properties"]["rules"]["items"]["properties"]
     assert "source_file" not in rule_props
 
 

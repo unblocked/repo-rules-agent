@@ -1,39 +1,35 @@
 [build-system]
-build-backend = 'poetry.core.masonry.api'
-requires = ['poetry-core']
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.black]
-extend-exclude = '__pycache__'
-include = '\.pyi?$'
-line-length = 120
-
-[tool.poetry]
-name = 'repo-rules-agent'
+[project]
+name = "repo-rules-agent"
 version = "0.9.0"
-description = 'Extract and index AI coding instructions from rules files'
-authors = []
+description = "Extract and index AI coding instructions from rules files"
+requires-python = ">=3.10.12,<3.14"
+dependencies = [
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "openai>=1.68.0",
+    "chonkie>=1.0.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.10.12,<3.14"
-pydantic = ">=2.5.3"
-pydantic-settings = ">=2.1.0"
-typer = ">=0.9.0"
-rich = ">=13.0.0"
-openai = ">=1.68.0"
-chonkie = {version = ">=1.0.0", extras = ["markdown"]}
-
-[tool.poetry.group.dev.dependencies]
-black = '^24'
-pytest = '^8'
-pytest-custom-exit-code = "^0"
-
-[tool.poetry.scripts]
+[project.scripts]
 repo-rules-agent = "rules_agent.cli:app"
 
-[[tool.poetry.packages]]
-from = 'src'
-include = 'rules_agent'
+[dependency-groups]
+dev = [
+    "ruff>=0.6,<1",
+    "pytest>=9,<10",
+    "pytest-custom-exit-code>=0.0.0,<1",
+]
 
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "primary"
+[tool.hatch.build.targets.wheel]
+packages = ["src/rules_agent"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["__pycache__"]

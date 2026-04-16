@@ -45,18 +45,20 @@ def _build_extraction_tool() -> dict:
         prop.pop("default", None)
     return {
         "type": "function",
-        "name": "extract_rules",
-        "description": "Extract coding rules and guidelines from the file content.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "rules": {
-                    "type": "array",
-                    "description": "List of extracted rules. Empty array if no rules found.",
-                    "items": schema,
+        "function": {
+            "name": "extract_rules",
+            "description": "Extract coding rules and guidelines from the file content.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "rules": {
+                        "type": "array",
+                        "description": "List of extracted rules. Empty array if no rules found.",
+                        "items": schema,
+                    },
                 },
+                "required": ["rules"],
             },
-            "required": ["rules"],
         },
     }
 
