@@ -68,9 +68,9 @@ class LLMConfig(BaseSettings):
 
     base_url: str = "http://localhost:11434/v1"
     api_key_env: str = "OLLAMA_API_KEY"
-    extraction_model: str = "gemma4"
+    extraction_model: str = "qwen3-coder:30b"
     extraction_max_tokens: int = 16384
-    judge_model: str = "gemma4"
+    judge_model: str = "qwen3-coder:30b"
     judge_max_tokens: int = 4096
 
 

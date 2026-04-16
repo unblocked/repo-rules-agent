@@ -66,7 +66,7 @@ repo-rules-agent eval <source> [--repo <path>] [-o results.json] [--judge-model 
 - `<source>`: Path to an index JSON file or a repository directory
 - If given a directory, runs the full discover -> extract -> eval pipeline
 - `--repo`: Repository path for reading source files from disk when index lacks embedded content
-- `--judge-model`: Model to use as judge (default: `gemma4`)
+- `--judge-model`: Model to use as judge (default: `qwen3-coder:30b`)
 - Reports precision, recall, and F1 scores per file and overall
 
 ### install-skill — Install the Claude Code skill
