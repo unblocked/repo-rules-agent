@@ -1,21 +1,22 @@
-.PHONY: install format test check build clean
+.PHONY: install format lint test check build clean
 
 install:
-	poetry install
+	uv sync
 
 format:
-	poetry run black src tests
+	uv run ruff format src tests
 
 lint:
-	poetry run black --check src tests
+	uv run ruff format --check src tests
+	uv run ruff check src tests
 
 test:
-	poetry run pytest tests -v
+	uv run pytest tests -v
 
 check: format test
 
 build:
-	poetry build
+	uv build
 
 clean:
 	rm -rf dist .pytest_cache __pycache__ src/**/__pycache__ tests/__pycache__

@@ -79,7 +79,7 @@ def index(
     Index a repository to extract AI coding rules.
 
     Discovers rules files (CLAUDE.md, .cursorrules, etc.) and extracts
-    individual rules using Claude. Outputs a JSON index.
+    individual rules using an LLM. Outputs a JSON index.
     """
     setup_logging(verbose)
     logger = logging.getLogger(__name__)
@@ -367,7 +367,6 @@ def eval_cmd(
     SOURCE can be a rules index JSON file or a repository directory.
     If a directory, runs discover → extract → eval pipeline.
     """
-    from .rules.eval import EvalSummary
     from .rules.extractor import _make_client
 
     setup_logging(verbose)

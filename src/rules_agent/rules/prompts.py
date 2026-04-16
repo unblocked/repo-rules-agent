@@ -63,7 +63,7 @@ own rule, even when multiple appear in the same section:
 - "Don't commit code with linting errors" = separate rule
 
 Also extract CLI commands and their invocation syntax as a separate code-questions rule \
-when the source documents them (e.g., "poetry run tool discover <path> [--verbose]").
+when the source documents them (e.g., "uv run tool discover <path> [--verbose]").
 
 ## DO NOT extract
 - Redundant variations of the same rule

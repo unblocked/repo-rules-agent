@@ -5,7 +5,7 @@
 The pipeline flows: **discover** → **extract** → **index** → **query**
 
 1. **Discovery** (`rules/discovery.py`): Scans a repo for rules files (CLAUDE.md, .cursorrules, etc.) organized by priority tiers defined in `config.toml`.
-2. **Extraction** (`rules/extractor.py`): Sends file contents to Claude via tool use to extract structured rules. Large files are chunked using `chonkie` (markdown-aware chunking).
+2. **Extraction** (`rules/extractor.py`): Sends file contents to an LLM via tool use to extract structured rules. Large files are chunked using `chonkie` (markdown-aware chunking).
 3. **Indexing** (`rules/index.py`): Deduplicates rules (text similarity), detects conflicts (contradictory severity), and builds a `RuleIndex`.
 4. **Query** (`rules/query.py`): Filters rules by task, language, scope, severity. Formats output as table, JSON, or prompt.
 5. **Eval** (`rules/eval.py`): Uses an LLM judge to score extraction quality (precision, recall, F1).
@@ -26,7 +26,7 @@ The pipeline flows: **discover** → **extract** → **index** → **query**
 5. Update the bundled skill files if the command should be user-facing:
    - `src/rules_agent/skill/SKILL.md` (bundled package copy)
    - `skills/repo-rules/SKILL.md` (plugin copy)
-   - `.claude/skills/repo-rules/SKILL.md` (local dev copy, uses `poetry run`)
+   - `.claude/skills/repo-rules/SKILL.md` (local dev copy, uses `uv run`)
 
 ## Adding Discovery Patterns
 
@@ -38,7 +38,7 @@ Edit `src/rules_agent/config.toml` to add new file patterns or tiers. The config
 - Mock all LLM/API calls — tests must run offline
 - Use `tmp_path` fixture for filesystem tests
 - Use `typer.testing.CliRunner` for CLI integration tests
-- Run `make test` (which runs `poetry run pytest tests -v`)
+- Run `make test` (which runs `uv run pytest tests -v`)
 
 ## Dependencies
 
@@ -48,3 +48,19 @@ Edit `src/rules_agent/config.toml` to add new file patterns or tiers. The config
 - `chonkie` — markdown-aware text chunking
 - `git` CLI — git operations (blob SHA computation via `git ls-tree`)
 - `pydantic-settings` — configuration management (TOML + env var loading)
+- `python-dotenv` — loads `.env` file at startup for API keys
+
+## Build & Run
+
+Uses `uv` for dependency management and `ruff` for formatting/linting:
+
+```bash
+uv sync              # install deps
+make lint             # ruff format --check + ruff check
+make test             # uv run pytest tests -v
+make build            # uv build (wheel + sdist)
+```
+
+## Configuration
+
+Provider settings live in `.env` (gitignored, loaded automatically via `python-dotenv` and `uv run`). Copy `.env.example` to get started. Override any setting via `RULES_AGENT_` prefixed env vars or edit `src/rules_agent/config.toml` directly.

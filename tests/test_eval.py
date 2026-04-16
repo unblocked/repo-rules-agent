@@ -226,7 +226,7 @@ def test_format_rules_numbers_multiple():
 
 def test_judge_tool_has_classification_fields():
     """Test that the judge tool schema includes classification fields."""
-    props = JUDGE_TOOL["parameters"]["properties"]
+    props = JUDGE_TOOL["function"]["parameters"]["properties"]
     assert "source_rule_count" in props
     assert "matched_rules" in props
     assert "missed_rules" in props
@@ -237,7 +237,7 @@ def test_judge_tool_has_classification_fields():
 
 def test_judge_tool_excludes_metadata_fields():
     """Test that the judge tool schema excludes metadata fields set by us."""
-    props = JUDGE_TOOL["parameters"]["properties"]
+    props = JUDGE_TOOL["function"]["parameters"]["properties"]
     assert "file_path" not in props
     assert "source_content_size" not in props
     assert "rule_count" not in props
@@ -245,7 +245,7 @@ def test_judge_tool_excludes_metadata_fields():
 
 def test_judge_tool_name():
     """Test that the judge tool has the correct name."""
-    assert JUDGE_TOOL["name"] == "submit_evaluation"
+    assert JUDGE_TOOL["function"]["name"] == "submit_evaluation"
 
 
 # --- evaluate_file ---

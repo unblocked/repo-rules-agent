@@ -6,36 +6,50 @@ Extract and index AI coding instructions from rules files (CLAUDE.md, AGENTS.md,
 
 ```bash
 # Install dependencies
-poetry install
+uv sync
 ```
 
 ## Configuration
 
-The tool uses the OpenAI SDK, so it works with any OpenAI-compatible API provider. By default it connects to a local [Ollama](https://ollama.com/) instance.
+The tool works with any OpenAI-compatible API provider. By default, it connects to a local [Ollama](https://ollama.com/) instance, with OpenAI + Anthropic examples.
+
+Copy `.env.example` to `.env` and uncomment the provider you want to use:
+
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+The `.env` file is gitignored and loaded automatically via two mechanisms:
+
+- **`uv run`** loads `.env` natively before launching the command (use `--env-file` to point at a different file, or `--no-env-file` to skip)
+- **`python-dotenv`** loads `.env` inside the application at startup, so it also works when running the installed CLI directly (e.g. `repo-rules-agent index ...` without the `uv run` prefix)
+
+### Providers
 
 **Local (Ollama — default, no API key needed):**
 
 ```bash
 ollama pull gemma4
-poetry run repo-rules-agent index /path/to/repo
+uv run repo-rules-agent index /path/to/repo
 ```
 
-**Anthropic:**
+**Anthropic** (add to `.env`):
 
-```bash
-export RULES_AGENT_LLM__BASE_URL=https://api.anthropic.com/v1
-export RULES_AGENT_LLM__API_KEY_ENV=ANTHROPIC_API_KEY
-export RULES_AGENT_LLM__EXTRACTION_MODEL=claude-haiku-4-5-20251001
-export ANTHROPIC_API_KEY=your-api-key
+```
+RULES_AGENT_LLM__BASE_URL=https://api.anthropic.com/v1
+RULES_AGENT_LLM__API_KEY_ENV=ANTHROPIC_API_KEY
+RULES_AGENT_LLM__EXTRACTION_MODEL=claude-haiku-4-5
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-**OpenAI:**
+**OpenAI** (add to `.env`):
 
-```bash
-export RULES_AGENT_LLM__BASE_URL=https://api.openai.com/v1
-export RULES_AGENT_LLM__API_KEY_ENV=OPENAI_API_KEY
-export RULES_AGENT_LLM__EXTRACTION_MODEL=gpt-4o-mini
-export OPENAI_API_KEY=your-api-key
+```
+RULES_AGENT_LLM__BASE_URL=https://api.openai.com/v1
+RULES_AGENT_LLM__API_KEY_ENV=OPENAI_API_KEY
+RULES_AGENT_LLM__EXTRACTION_MODEL=gpt-4o-mini
+OPENAI_API_KEY=sk-proj-...
 ```
 
 All LLM settings can also be changed in `src/rules_agent/config.toml`.
@@ -47,7 +61,7 @@ All LLM settings can also be changed in `src/rules_agent/config.toml`.
 Check which files would be processed without extracting:
 
 ```bash
-poetry run repo-rules-agent discover /path/to/repo
+uv run repo-rules-agent discover /path/to/repo
 ```
 
 ### Index a repository
@@ -56,10 +70,10 @@ Extract rules from all discovered files:
 
 ```bash
 # Output to stdout
-poetry run repo-rules-agent index /path/to/repo
+uv run repo-rules-agent index /path/to/repo
 
 # Output to file
-poetry run repo-rules-agent index /path/to/repo -o rules-index.json
+uv run repo-rules-agent index /path/to/repo -o rules-index.json
 ```
 
 ### Query rules
@@ -68,19 +82,54 @@ Filter and format rules from an index:
 
 ```bash
 # Table format (default)
-poetry run repo-rules-agent query rules-index.json --task code-review
+uv run repo-rules-agent query rules-index.json --task code-review
 
 # JSON format
-poetry run repo-rules-agent query rules-index.json --task code-review --format json
+uv run repo-rules-agent query rules-index.json --task code-review --format json
 
 # Prompt format (for injection into LLM prompts)
-poetry run repo-rules-agent query rules-index.json --task code-review --format prompt
+uv run repo-rules-agent query rules-index.json --task code-review --format prompt
 
 # Filter by language
-poetry run repo-rules-agent query rules-index.json --task code-review --lang py
+uv run repo-rules-agent query rules-index.json --task code-review --lang py
 
 # Filter by severity
-poetry run repo-rules-agent query rules-index.json --severity must
+uv run repo-rules-agent query rules-index.json --severity must
+
+# Include source file content in output (prompt and json formats)
+uv run repo-rules-agent query rules-index.json --task code-review --format prompt --include-sources --repo /path/to/repo
+```
+
+### Evaluate extraction quality
+
+Score how well the LLM extracted rules using a judge model:
+
+```bash
+# Evaluate from an existing index (requires --repo to read source files)
+uv run repo-rules-agent eval rules-index.json --repo /path/to/repo
+
+# Or run the full pipeline (discover → extract → eval) from a directory
+uv run repo-rules-agent eval /path/to/repo
+
+# Save results to file
+uv run repo-rules-agent eval rules-index.json --repo /path/to/repo -o eval-results.json
+
+# Use a different judge model
+uv run repo-rules-agent eval /path/to/repo --judge-model gpt-4o-mini
+```
+
+The judge scores each file on precision (no hallucinated rules), recall (no missed rules), and F1.
+
+### Install Claude Code skill
+
+Install the bundled skill so Claude Code can use `repo-rules-agent` directly:
+
+```bash
+# Install for the current project (writes to .claude/skills/repo-rules/SKILL.md)
+uv run repo-rules-agent install-skill
+
+# Install for all projects (writes to ~/.claude/skills/repo-rules/SKILL.md)
+uv run repo-rules-agent install-skill --scope user
 ```
 
 ## Discovery Tiers

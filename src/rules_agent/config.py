@@ -8,7 +8,7 @@ Load order (last wins):
   3. Environment variables with RULES_AGENT_ prefix
 
 Env var examples:
-    RULES_AGENT_LLM__EXTRACTION_MODEL=claude-haiku-4-5-20251001
+    RULES_AGENT_LLM__EXTRACTION_MODEL=claude-haiku-4-5
     RULES_AGENT_CHUNKING__THRESHOLD_CHARS=12000
     RULES_AGENT_DEDUP__SIMILARITY_THRESHOLD=0.85
 """
@@ -16,8 +16,11 @@ Env var examples:
 from pathlib import Path
 from typing import Tuple, Type
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
+
+load_dotenv(override=True)
 
 _CONFIG_TOML = Path(__file__).parent / "config.toml"
 
