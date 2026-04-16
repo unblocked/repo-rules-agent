@@ -171,3 +171,9 @@ make test
 # Format + test
 make check
 ```
+
+## Support
+
+Please open issues and feature requests here: https://github.com/unblocked/repo-rules-agent/issues
+
+Copyright © NextChapter Software
