@@ -97,9 +97,16 @@ repo-rules-agent eval <source> [--repo <path>] [-o results.json] [--judge-model 
 ### install-skill — Install this skill
 
 ```bash
-repo-rules-agent install-skill [--scope project|user] [--force]
+repo-rules-agent install-skill [--target claude|codex|cursor|all] [--scope project|user] [--force]
 ```
 
-- `--scope project` (default): `.claude/skills/repo-rules/SKILL.md` in the current directory.
-- `--scope user`: `~/.claude/skills/repo-rules/SKILL.md`.
-- `--force`: overwrite without confirmation.
+The same SKILL.md works across Claude Code, Codex CLI, and Cursor. Only the destination directory differs:
+
+| Target | Project scope | User scope |
+|---|---|---|
+| `claude` (default) | `.claude/skills/repo-rules/SKILL.md` | `~/.claude/skills/repo-rules/SKILL.md` |
+| `codex` | n/a (use `--scope user`) | `~/.codex/skills/repo-rules/SKILL.md` |
+| `cursor` | `.cursor/skills/repo-rules/SKILL.md` | `~/.cursor/skills/repo-rules/SKILL.md` |
+| `all` | claude + cursor (codex skipped) | claude + codex + cursor |
+
+- `--force`: overwrite any existing SKILL.md without confirmation.
