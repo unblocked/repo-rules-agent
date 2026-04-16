@@ -21,6 +21,7 @@ from .rules.eval import (
 from .rules.extractor import extract_rules_from_files
 from .rules.index import build_index
 from .rules.models import RuleIndex
+from .rules.paths import cache_root, clear_cache, default_index_path, list_cached_indices
 from .rules.query import (
     format_rules_for_prompt,
     format_rules_with_sources,
@@ -34,6 +35,12 @@ app = typer.Typer(
     name="rules-agent",
     help="Extract and query AI coding rules from repositories",
 )
+cache_app = typer.Typer(
+    name="cache",
+    help="Manage the per-repo index cache",
+    no_args_is_help=True,
+)
+app.add_typer(cache_app)
 console = Console()
 
 
@@ -61,7 +68,7 @@ def index(
         None,
         "--output",
         "-o",
-        help="Output file path (defaults to stdout as JSON)",
+        help="Output file path (defaults to the per-user cache dir)",
     ),
     embed_content: bool = typer.Option(
         False,
@@ -79,7 +86,8 @@ def index(
     Index a repository to extract AI coding rules.
 
     Discovers rules files (CLAUDE.md, .cursorrules, etc.) and extracts
-    individual rules using an LLM. Outputs a JSON index.
+    individual rules using an LLM. Writes a JSON index to the per-user
+    cache directory by default; pass -o to override.
     """
     setup_logging(verbose)
     logger = logging.getLogger(__name__)
@@ -126,13 +134,10 @@ def index(
         # Output
         index_json = rule_index.model_dump_json(indent=2, exclude_none=True)
 
-        if output:
-            output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(index_json)
-            console.print(f"\n[bold]Index saved to {output}[/bold]")
-        else:
-            console.print("\n[bold]Index JSON:[/bold]")
-            console.print(index_json)
+        target = output if output is not None else default_index_path(repo_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(index_json)
+        console.print(f"\n[bold]Index saved to {target}[/bold]")
 
     except typer.Exit:
         raise
@@ -144,12 +149,9 @@ def index(
 
 @app.command()
 def query(
-    index_path: Path = typer.Argument(
-        ...,
-        help="Path to the rules index JSON file",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
+    index_path: Optional[Path] = typer.Argument(
+        None,
+        help="Path to the rules index JSON file (defaults to the cached index for the current directory)",
         resolve_path=True,
     ),
     task: Optional[str] = typer.Option(
@@ -205,13 +207,23 @@ def query(
     """
     Query rules from an index file.
 
-    Filter by task type, language, scope, or severity.
+    Filter by task type, language, scope, or severity. With no positional
+    argument, reads the cached index for the current directory.
     """
     setup_logging(verbose)
 
     try:
+        # Resolve index path: explicit argument wins, otherwise use the cache default for cwd
+        resolved_index_path = index_path if index_path is not None else default_index_path(Path.cwd())
+        if not resolved_index_path.is_file():
+            console.print(
+                f"[red]Error: no index found at {resolved_index_path}.[/red]\n"
+                "Run [bold]repo-rules-agent index .[/bold] first, or pass a path as the first argument."
+            )
+            raise typer.Exit(1)
+
         # Load index
-        index_data = json.loads(index_path.read_text())
+        index_data = json.loads(resolved_index_path.read_text())
         rule_index = RuleIndex.model_validate(index_data)
 
         # Query
@@ -513,6 +525,71 @@ def install_skill(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(skill_source.read_text())
     console.print(f"[bold green]Skill installed to {target}[/bold green]")
+
+
+@cache_app.command("path")
+def cache_path_cmd(
+    repo: Path = typer.Argument(
+        Path.cwd(),
+        help="Repository path (defaults to the current directory)",
+        resolve_path=True,
+    ),
+) -> None:
+    """Print the cache path where this repo's index lives (or would live)."""
+    console.print(str(default_index_path(repo)))
+
+
+@cache_app.command("list")
+def cache_list_cmd() -> None:
+    """List all cached indices, most recently modified first."""
+    entries = list_cached_indices()
+    if not entries:
+        console.print(f"[yellow]No cached indices found under {cache_root()}.[/yellow]")
+        return
+
+    table = Table(title=f"Cached indices in {cache_root()}")
+    table.add_column("Directory", style="green")
+    table.add_column("Size", justify="right")
+    table.add_column("Modified", style="dim")
+
+    from datetime import datetime
+
+    for path in entries:
+        stat = path.stat()
+        mtime = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+        table.add_row(path.parent.name, f"{stat.st_size:,} B", mtime)
+
+    console.print(table)
+
+
+@cache_app.command("clear")
+def cache_clear_cmd(
+    repo: Optional[Path] = typer.Argument(
+        None,
+        help="Repository path whose cache to clear (omit with --all to wipe all repos)",
+        resolve_path=True,
+    ),
+    all_: bool = typer.Option(
+        False,
+        "--all",
+        help="Remove every cached index",
+    ),
+) -> None:
+    """Remove cached indices."""
+    if not all_ and repo is None:
+        console.print("[red]Error: pass a repo path, or --all to wipe the whole cache.[/red]")
+        raise typer.Exit(1)
+    if all_ and repo is not None:
+        console.print("[red]Error: --all cannot be combined with a repo path.[/red]")
+        raise typer.Exit(1)
+
+    removed = clear_cache(None if all_ else repo)
+    if not removed:
+        console.print("[yellow]Nothing to remove.[/yellow]")
+        return
+
+    for path in removed:
+        console.print(f"Removed {path}")
 
 
 if __name__ == "__main__":

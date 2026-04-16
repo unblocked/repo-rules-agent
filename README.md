@@ -69,38 +69,46 @@ uv run repo-rules-agent discover /path/to/repo
 
 ### Index a repository
 
-Extract rules from all discovered files:
+Extract rules from all discovered files. The index is written to a per-user cache directory by default (invisible to the repo), and `query` reads from the same place.
 
 ```bash
-# Output to stdout
+# Index the current repo (writes to the cache; prints the resolved path)
 uv run repo-rules-agent index /path/to/repo
 
-# Output to file
+# Override the output path
 uv run repo-rules-agent index /path/to/repo -o rules-index.json
 ```
 
 ### Query rules
 
-Filter and format rules from an index:
+Filter and format rules from the cached index. With no positional argument, `query` reads the cached index for the current directory.
 
 ```bash
 # Table format (default)
-uv run repo-rules-agent query rules-index.json --task code-review
+uv run repo-rules-agent query --task code-review
 
 # JSON format
-uv run repo-rules-agent query rules-index.json --task code-review --format json
+uv run repo-rules-agent query --task code-review --format json
 
 # Prompt format (for injection into LLM prompts)
-uv run repo-rules-agent query rules-index.json --task code-review --format prompt
+uv run repo-rules-agent query --task code-review --format prompt
 
 # Filter by language
-uv run repo-rules-agent query rules-index.json --task code-review --lang py
+uv run repo-rules-agent query --task code-review --lang py
 
 # Filter by severity
-uv run repo-rules-agent query rules-index.json --severity must
+uv run repo-rules-agent query --severity must
 
-# Include source file content in output (prompt and json formats)
-uv run repo-rules-agent query rules-index.json --task code-review --format prompt --include-sources --repo /path/to/repo
+# Query an explicit index file instead of the cache
+uv run repo-rules-agent query rules-index.json --task code-review
+```
+
+### Inspect the cache
+
+```bash
+uv run repo-rules-agent cache path          # where the cwd's index lives
+uv run repo-rules-agent cache list          # all cached indices, newest first
+uv run repo-rules-agent cache clear --all   # wipe the cache
 ```
 
 ### Evaluate extraction quality
