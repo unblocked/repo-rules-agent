@@ -23,7 +23,7 @@ repo-rules-agent = "rules_agent.cli:app"
 [dependency-groups]
 dev = [
     "ruff>=0.6,<1",
-    "pytest>=8,<9",
+    "pytest>=9,<10",
     "pytest-custom-exit-code>=0.0.0,<1",
 ]
 
