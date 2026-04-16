@@ -131,17 +131,33 @@ uv run repo-rules-agent eval /path/to/repo --judge-model gpt-4o-mini
 
 The judge scores each file on precision (no hallucinated rules), recall (no missed rules), and F1.
 
-### Install Claude Code skill
+### Install as an agent skill
 
-Install the bundled skill so Claude Code can use `repo-rules-agent` directly:
+The bundled `SKILL.md` works with any agent that speaks the open skill format — Claude Code, OpenAI Codex CLI, and Cursor. Only the destination directory differs.
 
 ```bash
-# Install for the current project (writes to .claude/skills/repo-rules/SKILL.md)
+# Claude Code (default), repo-local
 uv run repo-rules-agent install-skill
 
-# Install for all projects (writes to ~/.claude/skills/repo-rules/SKILL.md)
+# Claude Code, user-wide
 uv run repo-rules-agent install-skill --scope user
+
+# Codex CLI (user-scope only — Codex doesn't support project-scope skills)
+uv run repo-rules-agent install-skill --target codex --scope user
+
+# Cursor, repo-local
+uv run repo-rules-agent install-skill --target cursor
+
+# All supported agents at once
+uv run repo-rules-agent install-skill --target all --scope user
 ```
+
+| Target | Project scope | User scope |
+|---|---|---|
+| `claude` (default) | `.claude/skills/repo-rules/SKILL.md` | `~/.claude/skills/repo-rules/SKILL.md` |
+| `codex` | n/a | `~/.codex/skills/repo-rules/SKILL.md` |
+| `cursor` | `.cursor/skills/repo-rules/SKILL.md` | `~/.cursor/skills/repo-rules/SKILL.md` |
+| `all` | claude + cursor (codex skipped) | claude + codex + cursor |
 
 ## Discovery Tiers
 
