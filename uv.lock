@@ -640,7 +640,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chonkie", extras = ["markdown"], specifier = ">=1.0.0" },
+    { name = "chonkie", specifier = ">=1.0.0" },
     { name = "openai", specifier = ">=1.68.0" },
     { name = "pydantic", specifier = ">=2.5.3" },
     { name = "pydantic-settings", specifier = ">=2.1.0" },
