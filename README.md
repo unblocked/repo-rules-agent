@@ -105,6 +105,18 @@ uv run repo-rules-agent query --severity must
 uv run repo-rules-agent query rules-index.json --task code-review
 ```
 
+### Summarize the index
+
+Print rule counts per file plus breakdowns by severity, task, and language. Use this for overview questions instead of piping `query` into a script.
+
+```bash
+# Summary for the cached index of the current directory
+uv run repo-rules-agent stats
+
+# Or pass an explicit index file
+uv run repo-rules-agent stats rules-index.json
+```
+
 ### Inspect the cache
 
 ```bash
