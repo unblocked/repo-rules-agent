@@ -11,15 +11,9 @@ Extract and query AI coding rules (CLAUDE.md, .cursorrules, .github/copilot-inst
 
 ## Default workflow
 
-When you need to consult the rules for a task:
+When you need to consult the rules for a task, go straight to `query` (or `stats` for overview questions). Don't pre-check whether the index exists — the commands print a clear error with the exact remedy if it doesn't.
 
-1. Check whether a rules index exists for this repo:
-
-   ```bash
-   test -f "$(repo-rules-agent cache path)" && echo "index exists" || echo "missing"
-   ```
-
-2. If it doesn't exist — or if any rules source file has changed since it was last built — regenerate it:
+1. If a subsequent command reports "no index found at …", build the index (one-time per repo, or after a rules file changes):
 
    ```bash
    repo-rules-agent index .
@@ -27,7 +21,7 @@ When you need to consult the rules for a task:
 
    The index is written to a per-user cache directory (not the repo). The command prints the exact path.
 
-3. Query the index scoped to the current task:
+2. Query the index scoped to the current task:
 
    ```bash
    repo-rules-agent query \
