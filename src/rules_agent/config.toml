@@ -199,15 +199,11 @@ pattern = "*.md"
 path = ".claude/rules"
 pattern = "*.md"
 
-# Agent Skills (open standard — .github/skills is recommended,
-# .claude/skills is legacy/backward-compat)
-[[discovery.tier3.dirs]]
-path = ".github/skills"
-pattern = "**/SKILL.md"
-
-[[discovery.tier3.dirs]]
-path = ".claude/skills"
-pattern = "**/SKILL.md"
+# Agent Skills (SKILL.md) are intentionally NOT discovered. Skills describe
+# on-demand task workflows ("how to do X") — they're the inverse of the
+# always-loaded project rules this tool is built to extract. Indexing them
+# pollutes the rules set with procedural steps masquerading as invariants.
+# Project rules live in CLAUDE.md / AGENTS.md / .cursor/rules / etc.
 
 # ── Tier 4: Recursive patterns (lowest priority) ────────────
 [discovery.tier4]
