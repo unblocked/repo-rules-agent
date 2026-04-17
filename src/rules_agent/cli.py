@@ -290,6 +290,78 @@ def query(
 
 
 @app.command()
+def stats(
+    index_path: Optional[Path] = typer.Argument(
+        None,
+        help="Path to the rules index JSON file (defaults to the cached index for the current directory)",
+        resolve_path=True,
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging",
+    ),
+) -> None:
+    """
+    Summarize a rules index.
+
+    Prints total rule count, rules per file, and breakdowns by severity,
+    task, and language. With no positional argument, reads the cached
+    index for the current directory.
+    """
+    from collections import Counter
+
+    setup_logging(verbose)
+
+    try:
+        resolved_index_path = index_path if index_path is not None else default_index_path(Path.cwd())
+        if not resolved_index_path.is_file():
+            console.print(
+                f"[red]Error: no index found at {resolved_index_path}.[/red]\n"
+                "Run [bold]repo-rules-agent index .[/bold] first, or pass a path as the first argument."
+            )
+            raise typer.Exit(1)
+
+        index_data = json.loads(resolved_index_path.read_text())
+        rule_index = RuleIndex.model_validate(index_data)
+
+        console.print(f"[dim]Index:[/dim] {resolved_index_path}")
+        console.print(f"[dim]Repo: [/dim] {rule_index.repo}")
+        console.print(f"\n[bold]{rule_index.rule_count} rules[/bold] across {rule_index.file_count} files\n")
+
+        by_file = Counter(r.source_file for r in rule_index.rules)
+        per_file = Table(title="Rules Per File", title_style="bold")
+        per_file.add_column("File", style="white")
+        per_file.add_column("Rules", style="cyan", justify="right")
+        ordered_files = sorted(
+            rule_index.files,
+            key=lambda rf: by_file.get(rf.path, 0),
+            reverse=True,
+        )
+        for rule_file in ordered_files:
+            per_file.add_row(rule_file.path, str(by_file.get(rule_file.path, 0)))
+        console.print(per_file)
+
+        def fmt_counter(counter: Counter) -> str:
+            return ", ".join(f"{name} {count}" for name, count in counter.most_common())
+
+        by_severity = Counter(r.severity for r in rule_index.rules)
+        by_task = Counter(task for r in rule_index.rules for task in r.tasks)
+        by_language = Counter(lang for r in rule_index.rules for lang in r.languages)
+
+        console.print(f"\n[bold]By severity:[/bold] {fmt_counter(by_severity)}")
+        console.print(f"[bold]By task:[/bold]     {fmt_counter(by_task)}")
+        console.print(f"[bold]By language:[/bold] {fmt_counter(by_language)}")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
 def discover(
     repo_path: Path = typer.Argument(
         ...,

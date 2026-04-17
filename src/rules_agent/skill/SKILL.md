@@ -39,6 +39,14 @@ When you need to consult the rules for a task:
 
    Use `--format prompt` when injecting rules into your own context. Use `--format table` when showing them to the user.
 
+## Overview questions ("what rules does this repo have?", "how many rules per file?")
+
+Use `stats` — it reads the cached index and prints rule counts per file plus breakdowns by severity, task, and language. Do NOT pipe `query` into a custom script for this.
+
+```bash
+repo-rules-agent stats
+```
+
 ## Commands
 
 ### index — Extract rules and build a JSON index
@@ -50,7 +58,15 @@ repo-rules-agent index <repo-path> [-o output.json] [-v]
 - Discovers rules files, extracts individual rules via any OpenAI-compatible LLM, and writes a JSON index.
 - Default output location is a per-user cache directory keyed by the absolute repo path.
 - `-o path`: override the output path.
-- Defaults to local Ollama (`qwen3-coder:30b`); configure provider via `RULES_AGENT_LLM__BASE_URL` and `RULES_AGENT_LLM__API_KEY_ENV`.
+- Defaults to local Ollama (`glm-4.7-flash:latest`); configure provider via `RULES_AGENT_LLM__BASE_URL` and `RULES_AGENT_LLM__API_KEY_ENV`.
+
+### stats — Summarize a rules index
+
+```bash
+repo-rules-agent stats [index.json] [-v]
+```
+
+Reads the cached index (or a path you give) and prints total rule count, rules per file, and breakdowns by severity, task, and language. Use this for overview questions instead of piping `query` output into a script.
 
 ### query — Filter and retrieve rules from an index
 
