@@ -39,8 +39,8 @@ class Rule(BaseModel):
         default="",
         description="2-3 sentence description: WHAT the practice is, WHEN/WHERE to apply it (include any conditions), WHY it matters",
     )
-    category: RuleCategory = Field(
-        default=RuleCategory.BEST_PRACTICE,
+    category: str = Field(
+        default="best_practice",
         description=(
             "Category: crash_or_hang (crashes/deadlocks/infinite loops), "
             "logic_error (incorrect behavior/wrong results), "
@@ -51,8 +51,21 @@ class Rule(BaseModel):
             "code_style (formatting/naming/structural conventions), "
             "maintainability (makes future changes harder), "
             "testability (makes testing harder/breaks test patterns), "
-            "best_practice (general recommended practice)"
+            "best_practice (general recommended practice). "
+            "Prefer these values; if none fit, use a short lowercase_snake_case identifier."
         ),
+        examples=[
+            "crash_or_hang",
+            "logic_error",
+            "performance",
+            "security",
+            "error_handling",
+            "readability",
+            "code_style",
+            "maintainability",
+            "testability",
+            "best_practice",
+        ],
     )
     tasks: list[TaskType] = Field(
         default_factory=list,

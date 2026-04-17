@@ -67,7 +67,7 @@ def test_install_skill_overwrite_with_force(tmp_path, monkeypatch):
 
 
 def test_install_skill_overwrite_decline(tmp_path, monkeypatch):
-    """install-skill aborts when user declines overwrite."""
+    """install-skill skips the destination when user declines overwrite."""
     monkeypatch.chdir(tmp_path)
 
     # Install once
@@ -77,7 +77,7 @@ def test_install_skill_overwrite_decline(tmp_path, monkeypatch):
     # Try to install again, decline
     result = runner.invoke(app, ["install-skill", "--scope", "project"], input="n\n")
     assert result.exit_code == 0
-    assert "aborted" in result.output.lower()
+    assert "skipped" in result.output.lower()
 
 
 def test_install_skill_invalid_scope(tmp_path, monkeypatch):
@@ -87,3 +87,81 @@ def test_install_skill_invalid_scope(tmp_path, monkeypatch):
     result = runner.invoke(app, ["install-skill", "--scope", "invalid"])
     assert result.exit_code == 1
     assert "invalid scope" in result.output.lower()
+
+
+def test_install_skill_invalid_target(tmp_path, monkeypatch):
+    """install-skill with invalid target shows error."""
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["install-skill", "--target", "gemini"])
+    assert result.exit_code == 1
+    assert "invalid target" in result.output.lower()
+
+
+def test_install_skill_codex_user_scope(tmp_path, monkeypatch):
+    """--target codex --scope user writes to ~/.codex/skills/repo-rules/."""
+    monkeypatch.chdir(tmp_path)
+    with patch.object(Path, "home", return_value=tmp_path):
+        result = runner.invoke(app, ["install-skill", "--target", "codex", "--scope", "user"])
+    assert result.exit_code == 0, result.output
+
+    skill_path = tmp_path / ".codex" / "skills" / "repo-rules" / "SKILL.md"
+    assert skill_path.exists()
+
+
+def test_install_skill_codex_project_scope_rejected(tmp_path, monkeypatch):
+    """--target codex --scope project errors (codex is user-scope only)."""
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["install-skill", "--target", "codex", "--scope", "project"])
+    assert result.exit_code == 1
+    assert "codex" in result.output.lower()
+    assert "user" in result.output.lower()
+
+
+def test_install_skill_cursor_project_scope(tmp_path, monkeypatch):
+    """--target cursor --scope project writes to .cursor/skills/repo-rules/."""
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["install-skill", "--target", "cursor", "--scope", "project"])
+    assert result.exit_code == 0, result.output
+
+    skill_path = tmp_path / ".cursor" / "skills" / "repo-rules" / "SKILL.md"
+    assert skill_path.exists()
+
+
+def test_install_skill_cursor_user_scope(tmp_path, monkeypatch):
+    """--target cursor --scope user writes to ~/.cursor/skills/repo-rules/."""
+    monkeypatch.chdir(tmp_path)
+    with patch.object(Path, "home", return_value=tmp_path):
+        result = runner.invoke(app, ["install-skill", "--target", "cursor", "--scope", "user"])
+    assert result.exit_code == 0, result.output
+
+    skill_path = tmp_path / ".cursor" / "skills" / "repo-rules" / "SKILL.md"
+    assert skill_path.exists()
+
+
+def test_install_skill_target_all_project(tmp_path, monkeypatch):
+    """--target all --scope project writes to claude + cursor, skips codex."""
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["install-skill", "--target", "all", "--scope", "project"])
+    assert result.exit_code == 0, result.output
+
+    assert (tmp_path / ".claude" / "skills" / "repo-rules" / "SKILL.md").exists()
+    assert (tmp_path / ".cursor" / "skills" / "repo-rules" / "SKILL.md").exists()
+    assert not (tmp_path / ".codex" / "skills" / "repo-rules" / "SKILL.md").exists()
+    # Codex skip is surfaced to the user
+    assert "codex" in result.output.lower()
+
+
+def test_install_skill_target_all_user(tmp_path, monkeypatch):
+    """--target all --scope user writes to every agent's user-scope location."""
+    monkeypatch.chdir(tmp_path)
+    with patch.object(Path, "home", return_value=tmp_path):
+        result = runner.invoke(app, ["install-skill", "--target", "all", "--scope", "user"])
+    assert result.exit_code == 0, result.output
+
+    assert (tmp_path / ".claude" / "skills" / "repo-rules" / "SKILL.md").exists()
+    assert (tmp_path / ".codex" / "skills" / "repo-rules" / "SKILL.md").exists()
+    assert (tmp_path / ".cursor" / "skills" / "repo-rules" / "SKILL.md").exists()

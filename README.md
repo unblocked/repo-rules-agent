@@ -2,6 +2,21 @@
 
 Extract and index AI coding instructions from rules files (CLAUDE.md, AGENTS.md, .cursorrules, etc.).
 
+## Why?
+
+You've written the rules. There's a `CLAUDE.md` at the root, an `AGENTS.md` for Codex, a `.cursorrules` file, and whatever else lives under `.cursor/rules/` or `.github/instructions/`. But when you open an agent session and say "review this PR," it doesn't see all of them.
+
+repo-rules-agent builds one queryable index from every rules file in your repo. A query scoped to the work in front of you — e.g. `--task code-review --lang py --severity must` — returns the ~15 rules that actually apply, not 8,000 tokens of rules files.
+
+## How it works
+
+Four stages: **discover → extract → index → query**.
+
+- **Discover** sweeps ~40 known rules-file conventions across [four priority tiers](#discovery-tiers) — root files, tool-specific paths, rules directories with globs, and a recursive `**` tier. It resolves `@include`-style directives, so a `CLAUDE.md` that's just a pointer to `AGENTS.md` counts as one source, not two.
+- **Extract** sends each file to an LLM via the OpenAI tool-calling protocol. The model fills a pydantic-validated schema — see [Rule Model](#rule-model). Large files are chunked on Markdown headings via [chonkie](https://github.com/chonkie-ai/chonkie).
+- **Index** merges near-duplicates by text similarity and flags potential conflicts — similar rules with contradictory severities — for human resolution.
+- **Query** returns rules scoped to the current task. Filter by task, language, severity, scope; output as a table, JSON, or a prompt-ready block.
+
 ## Dependencies
 
 - [`uv`](https://docs.astral.sh/uv/) — Python package manager
@@ -33,9 +48,11 @@ The `.env` file is gitignored and loaded automatically at startup via `python-do
 **Local (Ollama — default, no API key needed):**
 
 ```bash
-ollama pull qwen3-coder:30b
+ollama pull glm-4.7-flash:latest
 uv run repo-rules-agent index /path/to/repo
 ```
+
+Local models vary in tool-calling reliability; for the highest-quality extraction, use OpenAI or Anthropic.
 
 **Anthropic** (add to `.env`):
 
@@ -103,6 +120,18 @@ uv run repo-rules-agent query --severity must
 uv run repo-rules-agent query rules-index.json --task code-review
 ```
 
+### Summarize the index
+
+Print rule counts per file plus breakdowns by severity, task, and language. Use this for overview questions instead of piping `query` into a script.
+
+```bash
+# Summary for the cached index of the current directory
+uv run repo-rules-agent stats
+
+# Or pass an explicit index file
+uv run repo-rules-agent stats rules-index.json
+```
+
 ### Inspect the cache
 
 ```bash
@@ -131,17 +160,33 @@ uv run repo-rules-agent eval /path/to/repo --judge-model gpt-4o-mini
 
 The judge scores each file on precision (no hallucinated rules), recall (no missed rules), and F1.
 
-### Install Claude Code skill
+### Install as an agent skill
 
-Install the bundled skill so Claude Code can use `repo-rules-agent` directly:
+The bundled `SKILL.md` works with any agent that speaks the open skill format — Claude Code, OpenAI Codex CLI, and Cursor. Only the destination directory differs.
 
 ```bash
-# Install for the current project (writes to .claude/skills/repo-rules/SKILL.md)
+# Claude Code (default), repo-local
 uv run repo-rules-agent install-skill
 
-# Install for all projects (writes to ~/.claude/skills/repo-rules/SKILL.md)
+# Claude Code, user-wide
 uv run repo-rules-agent install-skill --scope user
+
+# Codex CLI (user-scope only — Codex doesn't support project-scope skills)
+uv run repo-rules-agent install-skill --target codex --scope user
+
+# Cursor, repo-local
+uv run repo-rules-agent install-skill --target cursor
+
+# All supported agents at once
+uv run repo-rules-agent install-skill --target all --scope user
 ```
+
+| Target | Project scope | User scope |
+|---|---|---|
+| `claude` (default) | `.claude/skills/repo-rules/SKILL.md` | `~/.claude/skills/repo-rules/SKILL.md` |
+| `codex` | n/a | `~/.codex/skills/repo-rules/SKILL.md` |
+| `cursor` | `.cursor/skills/repo-rules/SKILL.md` | `~/.cursor/skills/repo-rules/SKILL.md` |
+| `all` | claude + cursor (codex skipped) | claude + codex + cursor |
 
 ## Discovery Tiers
 
@@ -160,7 +205,7 @@ Each extracted rule includes:
 
 - `title`: Concise rule title with key technical context
 - `description`: 2-3 sentence description (what, when, why)
-- `category`: crash_or_hang, logic_error, performance, security, error_handling, readability, code_style, maintainability, testability, best_practice
+- `category`: open string. Preferred values surface in the tool schema as examples — `crash_or_hang`, `logic_error`, `performance`, `security`, `error_handling`, `readability`, `code_style`, `maintainability`, `testability`, `best_practice` — but any lowercase_snake_case identifier is accepted, so models can return values like `architecture` or `type_safety` without the rule being dropped
 - `tasks`: code-review, code-generation, code-questions
 - `languages`: ts, py, go, etc. or "all"
 - `scope`: repo, directory, file-pattern

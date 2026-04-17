@@ -290,6 +290,78 @@ def query(
 
 
 @app.command()
+def stats(
+    index_path: Optional[Path] = typer.Argument(
+        None,
+        help="Path to the rules index JSON file (defaults to the cached index for the current directory)",
+        resolve_path=True,
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging",
+    ),
+) -> None:
+    """
+    Summarize a rules index.
+
+    Prints total rule count, rules per file, and breakdowns by severity,
+    task, and language. With no positional argument, reads the cached
+    index for the current directory.
+    """
+    from collections import Counter
+
+    setup_logging(verbose)
+
+    try:
+        resolved_index_path = index_path if index_path is not None else default_index_path(Path.cwd())
+        if not resolved_index_path.is_file():
+            console.print(
+                f"[red]Error: no index found at {resolved_index_path}.[/red]\n"
+                "Run [bold]repo-rules-agent index .[/bold] first, or pass a path as the first argument."
+            )
+            raise typer.Exit(1)
+
+        index_data = json.loads(resolved_index_path.read_text())
+        rule_index = RuleIndex.model_validate(index_data)
+
+        console.print(f"[dim]Index:[/dim] {resolved_index_path}")
+        console.print(f"[dim]Repo: [/dim] {rule_index.repo}")
+        console.print(f"\n[bold]{rule_index.rule_count} rules[/bold] across {rule_index.file_count} files\n")
+
+        by_file = Counter(r.source_file for r in rule_index.rules)
+        per_file = Table(title="Rules Per File", title_style="bold")
+        per_file.add_column("File", style="white")
+        per_file.add_column("Rules", style="cyan", justify="right")
+        ordered_files = sorted(
+            rule_index.files,
+            key=lambda rf: by_file.get(rf.path, 0),
+            reverse=True,
+        )
+        for rule_file in ordered_files:
+            per_file.add_row(rule_file.path, str(by_file.get(rule_file.path, 0)))
+        console.print(per_file)
+
+        def fmt_counter(counter: Counter) -> str:
+            return ", ".join(f"{name} {count}" for name, count in counter.most_common())
+
+        by_severity = Counter(r.severity for r in rule_index.rules)
+        by_task = Counter(task for r in rule_index.rules for task in r.tasks)
+        by_language = Counter(lang for r in rule_index.rules for lang in r.languages)
+
+        console.print(f"\n[bold]By severity:[/bold] {fmt_counter(by_severity)}")
+        console.print(f"[bold]By task:[/bold]     {fmt_counter(by_task)}")
+        console.print(f"[bold]By language:[/bold] {fmt_counter(by_language)}")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
 def discover(
     repo_path: Path = typer.Argument(
         ...,
@@ -480,12 +552,57 @@ def eval_cmd(
         raise typer.Exit(1)
 
 
+# Skill destination paths per agent + scope, relative to either cwd (project)
+# or $HOME (user). Codex's OpenAI CLI only supports a user-scope skills dir.
+_SKILL_TARGETS: dict[str, dict[str, Optional[Path]]] = {
+    "claude": {
+        "project": Path(".claude/skills/repo-rules/SKILL.md"),
+        "user": Path(".claude/skills/repo-rules/SKILL.md"),
+    },
+    "codex": {
+        "project": None,
+        "user": Path(".codex/skills/repo-rules/SKILL.md"),
+    },
+    "cursor": {
+        "project": Path(".cursor/skills/repo-rules/SKILL.md"),
+        "user": Path(".cursor/skills/repo-rules/SKILL.md"),
+    },
+}
+
+
+def _resolve_skill_destination(target: str, scope: str) -> Optional[Path]:
+    """Return the absolute destination for (target, scope), or None if unsupported."""
+    relative = _SKILL_TARGETS[target][scope]
+    if relative is None:
+        return None
+    base = Path.home() if scope == "user" else Path.cwd()
+    return base / relative
+
+
+def _install_one(skill_source: Path, destination: Path, force: bool) -> bool:
+    """Write the skill to ``destination``. Returns True on write, False if declined."""
+    if destination.exists() and not force:
+        overwrite = typer.confirm(f"SKILL.md already exists at {destination}. Overwrite?")
+        if not overwrite:
+            console.print(f"[yellow]Skipped {destination}.[/yellow]")
+            return False
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(skill_source.read_text())
+    console.print(f"[bold green]Skill installed to {destination}[/bold green]")
+    return True
+
+
 @app.command(name="install-skill")
 def install_skill(
+    target: str = typer.Option(
+        "claude",
+        "--target",
+        help="Agent to install for: claude, codex, cursor, or all",
+    ),
     scope: str = typer.Option(
         "project",
         "--scope",
-        help="Install scope: 'project' (.claude/skills/) or 'user' (~/.claude/skills/)",
+        help="Install scope: 'project' (repo-local) or 'user' (home dir)",
     ),
     force: bool = typer.Option(
         False,
@@ -494,37 +611,59 @@ def install_skill(
     ),
 ) -> None:
     """
-    Install the repo-rules Claude Code skill.
+    Install the repo-rules skill for one or more coding agents.
 
-    Copies the bundled SKILL.md to the appropriate skills directory
-    so Claude Code can discover and use the repo-rules-agent CLI.
+    The same SKILL.md format is consumed by Claude Code, Codex CLI, and
+    Cursor — only the destination directory differs. Use --target to pick
+    the agent, or --target all to install for every supported agent at the
+    chosen scope.
     """
-    # Locate the bundled SKILL.md
     skill_source = Path(__file__).parent / "skill" / "SKILL.md"
     if not skill_source.exists():
         console.print("[red]Error: bundled SKILL.md not found in package[/red]")
         raise typer.Exit(1)
 
-    # Determine target path
-    if scope == "user":
-        target = Path.home() / ".claude" / "skills" / "repo-rules" / "SKILL.md"
-    elif scope == "project":
-        target = Path.cwd() / ".claude" / "skills" / "repo-rules" / "SKILL.md"
-    else:
+    if scope not in {"project", "user"}:
         console.print(f"[red]Error: invalid scope '{scope}'. Use 'project' or 'user'.[/red]")
         raise typer.Exit(1)
 
-    # Check if target already exists
-    if target.exists() and not force:
-        overwrite = typer.confirm(f"SKILL.md already exists at {target}. Overwrite?")
-        if not overwrite:
-            console.print("[yellow]Aborted.[/yellow]")
-            raise typer.Exit(0)
+    valid_targets = set(_SKILL_TARGETS.keys()) | {"all"}
+    if target not in valid_targets:
+        console.print(f"[red]Error: invalid target '{target}'. Use one of: {', '.join(sorted(valid_targets))}.[/red]")
+        raise typer.Exit(1)
 
-    # Copy the skill file
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(skill_source.read_text())
-    console.print(f"[bold green]Skill installed to {target}[/bold green]")
+    # Resolve destinations
+    if target == "all":
+        pairs: list[tuple[str, Path]] = []
+        for agent in _SKILL_TARGETS:
+            dest = _resolve_skill_destination(agent, scope)
+            if dest is None:
+                console.print(
+                    f"[yellow]Skipping {agent}: no {scope}-scope skill location "
+                    "(codex skills are user-scoped only).[/yellow]"
+                )
+                continue
+            pairs.append((agent, dest))
+        if not pairs:
+            console.print("[red]Error: no valid destinations for target=all at this scope.[/red]")
+            raise typer.Exit(1)
+    else:
+        dest = _resolve_skill_destination(target, scope)
+        if dest is None:
+            console.print(
+                f"[red]Error: {target} does not support --scope {scope}. "
+                "Codex skills are user-scoped only; try --scope user.[/red]"
+            )
+            raise typer.Exit(1)
+        pairs = [(target, dest)]
+
+    any_written = False
+    for _agent, dest in pairs:
+        if _install_one(skill_source, dest, force):
+            any_written = True
+
+    if not any_written:
+        raise typer.Exit(0)
 
 
 @cache_app.command("path")
