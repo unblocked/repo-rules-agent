@@ -2,6 +2,21 @@
 
 Extract and index AI coding instructions from rules files (CLAUDE.md, AGENTS.md, .cursorrules, etc.).
 
+## Why?
+
+You've written the rules. There's a `CLAUDE.md` at the root, an `AGENTS.md` for Codex, a `.cursorrules` file, and whatever else lives under `.cursor/rules/` or `.github/instructions/`. But when you open an agent session and say "review this PR," it doesn't see all of them.
+
+repo-rules-agent builds one queryable index from every rules file in your repo. A query scoped to the work in front of you — e.g. `--task code-review --lang py --severity must` — returns the ~15 rules that actually apply, not 8,000 tokens of rules files.
+
+## How it works
+
+Four stages: **discover → extract → index → query**.
+
+- **Discover** sweeps ~40 known rules-file conventions across [four priority tiers](#discovery-tiers) — root files, tool-specific paths, rules directories with globs, and a recursive `**` tier. It resolves `@include`-style directives, so a `CLAUDE.md` that's just a pointer to `AGENTS.md` counts as one source, not two.
+- **Extract** sends each file to an LLM via the OpenAI tool-calling protocol. The model fills a pydantic-validated schema — see [Rule Model](#rule-model). Large files are chunked on Markdown headings via [chonkie](https://github.com/chonkie-ai/chonkie).
+- **Index** merges near-duplicates by text similarity and flags potential conflicts — similar rules with contradictory severities — for human resolution.
+- **Query** returns rules scoped to the current task. Filter by task, language, severity, scope; output as a table, JSON, or a prompt-ready block.
+
 ## Dependencies
 
 - [`uv`](https://docs.astral.sh/uv/) — Python package manager
