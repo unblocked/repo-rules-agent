@@ -209,8 +209,22 @@ def _call_llm_for_chunk(
         )
         return []
 
+    # Some models (notably smaller local ones) emit the rules array as a
+    # JSON-encoded string instead of a list. Unwrap it once before iterating.
+    rules_value = tool_input["rules"]
+    if isinstance(rules_value, str):
+        try:
+            rules_value = json.loads(rules_value)
+            logger.info(f"{chunk_label}: unwrapped stringified rules array")
+        except json.JSONDecodeError as e:
+            logger.error(f"{chunk_label}: 'rules' was a string but not valid JSON: {e}")
+            return []
+    if not isinstance(rules_value, list):
+        logger.error(f"{chunk_label}: 'rules' is {type(rules_value).__name__}, expected list")
+        return []
+
     rules = []
-    for i, rule_data in enumerate(tool_input["rules"]):
+    for i, rule_data in enumerate(rules_value):
         if not isinstance(rule_data, dict):
             logger.error(
                 f"{chunk_label}: rule[{i}] is {type(rule_data).__name__}, expected dict. "

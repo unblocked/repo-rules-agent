@@ -92,33 +92,48 @@ Prioritize by severity: 'must' rules (required invariants, security, correctness
 
 If the file contains no extractable rules, return an empty rules array.
 
-## Examples
+## Tool call format
 
-Source: "All suspend functions must use runSuspendCatching. \
-runCatching silently swallows CancellationException which breaks structured concurrency."
-- title: "Use runSuspendCatching instead of runCatching"
-  description: "All suspend functions must use runSuspendCatching for error handling. runCatching silently swallows CancellationException which breaks structured concurrency."
-  category: error_handling
-  tasks: ["code-review", "code-generation"]
-  languages: ["kotlin"]
-  severity: must
+Call `extract_rules` with a single argument `rules` that is a JSON array of \
+rule objects. The `rules` value must be an ARRAY (list), not a string \
+containing JSON. Each element must be an OBJECT (dict) with the fields below.
 
-Source: "Always run make lint && make test before committing"
-- title: "Run lint and tests before committing"
-  description: "Always run make lint && make test before committing changes. This ensures code quality gates are met before code enters the repository."
-  category: best_practice
-  tasks: ["code-questions"]
-  languages: ["all"]
-  severity: must
+## Example tool call
 
-Source: "The extraction module uses Claude via structured tool use to extract rules from file content. \
-Large files are chunked using chonkie with markdown-aware splitting."
-- title: "Extraction uses Claude via structured tool use with markdown-aware chunking"
-  description: "The extraction module calls Claude via the Anthropic API using structured tool use to extract rules. Files larger than the chunk threshold are split using chonkie with heading-aware rules for markdown files."
-  category: best_practice
-  tasks: ["code-questions", "code-generation"]
-  languages: ["python"]
-  severity: should"""
+For the following source text:
+
+  "All suspend functions must use runSuspendCatching. runCatching silently \
+swallows CancellationException which breaks structured concurrency. \
+Also: always run make lint && make test before committing."
+
+The correct `extract_rules` arguments are:
+
+{
+  "rules": [
+    {
+      "title": "Use runSuspendCatching instead of runCatching",
+      "description": "All suspend functions must use runSuspendCatching for error handling. runCatching silently swallows CancellationException which breaks structured concurrency.",
+      "category": "error_handling",
+      "tasks": ["code-review", "code-generation"],
+      "languages": ["kotlin"],
+      "scope": "repo",
+      "severity": "must"
+    },
+    {
+      "title": "Run lint and tests before committing",
+      "description": "Always run make lint && make test before committing changes. This ensures code quality gates are met before code enters the repository.",
+      "category": "best_practice",
+      "tasks": ["code-questions"],
+      "languages": ["all"],
+      "scope": "repo",
+      "severity": "must"
+    }
+  ]
+}
+
+Note the structure: `rules` is a JSON array, each element is a JSON object \
+with unquoted field names and proper types (arrays for tasks/languages, \
+plain strings for title/description/category/scope/severity)."""
 
 EXTRACTION_USER = """Extract rules from this file.
 

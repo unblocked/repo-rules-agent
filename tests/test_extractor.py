@@ -79,8 +79,12 @@ def test_extraction_tool_schema_enums():
     assert "should" in rule_props["severity"]["enum"]
     assert "can" in rule_props["severity"]["enum"]
     assert "repo" in rule_props["scope"]["enum"]
-    assert "security" in rule_props["category"]["enum"]
-    assert "best_practice" in rule_props["category"]["enum"]
+    # Category is an open string field — preferred values surface as examples,
+    # not as an enum, so unknown categories (e.g. "architecture") are accepted.
+    assert rule_props["category"]["type"] == "string"
+    assert "enum" not in rule_props["category"]
+    assert "security" in rule_props["category"]["examples"]
+    assert "best_practice" in rule_props["category"]["examples"]
     # tasks items should be constrained by enum
     assert "code-review" in rule_props["tasks"]["items"]["enum"]
     assert "code-generation" in rule_props["tasks"]["items"]["enum"]
@@ -149,6 +153,56 @@ def test_extract_rules_returns_empty_on_error():
     """Test that extraction returns empty list on API error."""
     mock_client = MagicMock()
     mock_client.chat.completions.create.side_effect = Exception("API error")
+
+    rule_file = RuleFile(path="/test/CLAUDE.md", tier=1, content_size=9)
+    rules = extract_rules_from_file(rule_file, "# Content", client=mock_client)
+
+    assert rules == []
+
+
+def test_extract_rules_unwraps_stringified_rules_array():
+    """Some local models emit the 'rules' value as a JSON-encoded string instead of a list."""
+    import json
+
+    rules_data = [
+        {
+            "title": "Use type hints",
+            "description": "Always add type hints to function signatures.",
+            "category": "readability",
+            "tasks": ["code-review"],
+            "languages": ["py"],
+            "scope": "repo",
+            "severity": "should",
+        }
+    ]
+    tool_call = MagicMock()
+    tool_call.function.arguments = json.dumps({"rules": json.dumps(rules_data)})
+    message = MagicMock()
+    message.tool_calls = [tool_call]
+    choice = MagicMock()
+    choice.message = message
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = MagicMock(choices=[choice])
+
+    rule_file = RuleFile(path="/test/CLAUDE.md", tier=1, content_size=26)
+    rules = extract_rules_from_file(rule_file, "# Use type hints", client=mock_client)
+
+    assert len(rules) == 1
+    assert rules[0].title == "Use type hints"
+
+
+def test_extract_rules_returns_empty_on_malformed_stringified_rules():
+    """If 'rules' is a string that isn't valid JSON, return an empty list rather than crashing."""
+    import json
+
+    tool_call = MagicMock()
+    tool_call.function.arguments = json.dumps({"rules": "not json at all"})
+    message = MagicMock()
+    message.tool_calls = [tool_call]
+    choice = MagicMock()
+    choice.message = message
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = MagicMock(choices=[choice])
 
     rule_file = RuleFile(path="/test/CLAUDE.md", tier=1, content_size=9)
     rules = extract_rules_from_file(rule_file, "# Content", client=mock_client)

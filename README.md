@@ -33,9 +33,11 @@ The `.env` file is gitignored and loaded automatically at startup via `python-do
 **Local (Ollama — default, no API key needed):**
 
 ```bash
-ollama pull qwen3-coder:30b
+ollama pull glm-4.7-flash:latest
 uv run repo-rules-agent index /path/to/repo
 ```
+
+Local models vary in tool-calling reliability; for the highest-quality extraction, use OpenAI or Anthropic.
 
 **Anthropic** (add to `.env`):
 
@@ -131,17 +133,33 @@ uv run repo-rules-agent eval /path/to/repo --judge-model gpt-4o-mini
 
 The judge scores each file on precision (no hallucinated rules), recall (no missed rules), and F1.
 
-### Install Claude Code skill
+### Install as an agent skill
 
-Install the bundled skill so Claude Code can use `repo-rules-agent` directly:
+The bundled `SKILL.md` works with any agent that speaks the open skill format — Claude Code, OpenAI Codex CLI, and Cursor. Only the destination directory differs.
 
 ```bash
-# Install for the current project (writes to .claude/skills/repo-rules/SKILL.md)
+# Claude Code (default), repo-local
 uv run repo-rules-agent install-skill
 
-# Install for all projects (writes to ~/.claude/skills/repo-rules/SKILL.md)
+# Claude Code, user-wide
 uv run repo-rules-agent install-skill --scope user
+
+# Codex CLI (user-scope only — Codex doesn't support project-scope skills)
+uv run repo-rules-agent install-skill --target codex --scope user
+
+# Cursor, repo-local
+uv run repo-rules-agent install-skill --target cursor
+
+# All supported agents at once
+uv run repo-rules-agent install-skill --target all --scope user
 ```
+
+| Target | Project scope | User scope |
+|---|---|---|
+| `claude` (default) | `.claude/skills/repo-rules/SKILL.md` | `~/.claude/skills/repo-rules/SKILL.md` |
+| `codex` | n/a | `~/.codex/skills/repo-rules/SKILL.md` |
+| `cursor` | `.cursor/skills/repo-rules/SKILL.md` | `~/.cursor/skills/repo-rules/SKILL.md` |
+| `all` | claude + cursor (codex skipped) | claude + codex + cursor |
 
 ## Discovery Tiers
 
@@ -160,7 +178,7 @@ Each extracted rule includes:
 
 - `title`: Concise rule title with key technical context
 - `description`: 2-3 sentence description (what, when, why)
-- `category`: crash_or_hang, logic_error, performance, security, error_handling, readability, code_style, maintainability, testability, best_practice
+- `category`: open string. Preferred values surface in the tool schema as examples — `crash_or_hang`, `logic_error`, `performance`, `security`, `error_handling`, `readability`, `code_style`, `maintainability`, `testability`, `best_practice` — but any lowercase_snake_case identifier is accepted, so models can return values like `architecture` or `type_safety` without the rule being dropped
 - `tasks`: code-review, code-generation, code-questions
 - `languages`: ts, py, go, etc. or "all"
 - `scope`: repo, directory, file-pattern

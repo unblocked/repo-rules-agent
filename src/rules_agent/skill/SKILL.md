@@ -11,15 +11,9 @@ Extract and query AI coding rules (CLAUDE.md, .cursorrules, .github/copilot-inst
 
 ## Default workflow
 
-When you need to consult the rules for a task:
+When you need to consult the rules for a task, go straight to `query` (or `stats` for overview questions). Don't pre-check whether the index exists — the commands print a clear error with the exact remedy if it doesn't.
 
-1. Check whether a rules index exists for this repo:
-
-   ```bash
-   test -f "$(repo-rules-agent cache path)" && echo "index exists" || echo "missing"
-   ```
-
-2. If it doesn't exist — or if any rules source file has changed since it was last built — regenerate it:
+1. If a subsequent command reports "no index found at …", build the index (one-time per repo, or after a rules file changes):
 
    ```bash
    repo-rules-agent index .
@@ -27,7 +21,7 @@ When you need to consult the rules for a task:
 
    The index is written to a per-user cache directory (not the repo). The command prints the exact path.
 
-3. Query the index scoped to the current task:
+2. Query the index scoped to the current task:
 
    ```bash
    repo-rules-agent query \
@@ -38,6 +32,14 @@ When you need to consult the rules for a task:
    ```
 
    Use `--format prompt` when injecting rules into your own context. Use `--format table` when showing them to the user.
+
+## Overview questions ("what rules does this repo have?", "how many rules per file?")
+
+Use `stats` — it reads the cached index and prints rule counts per file plus breakdowns by severity, task, and language. Do NOT pipe `query` into a custom script for this.
+
+```bash
+repo-rules-agent stats
+```
 
 ## Commands
 
@@ -50,7 +52,15 @@ repo-rules-agent index <repo-path> [-o output.json] [-v]
 - Discovers rules files, extracts individual rules via any OpenAI-compatible LLM, and writes a JSON index.
 - Default output location is a per-user cache directory keyed by the absolute repo path.
 - `-o path`: override the output path.
-- Defaults to local Ollama (`qwen3-coder:30b`); configure provider via `RULES_AGENT_LLM__BASE_URL` and `RULES_AGENT_LLM__API_KEY_ENV`.
+- Defaults to local Ollama (`glm-4.7-flash:latest`); configure provider via `RULES_AGENT_LLM__BASE_URL` and `RULES_AGENT_LLM__API_KEY_ENV`.
+
+### stats — Summarize a rules index
+
+```bash
+repo-rules-agent stats [index.json] [-v]
+```
+
+Reads the cached index (or a path you give) and prints total rule count, rules per file, and breakdowns by severity, task, and language. Use this for overview questions instead of piping `query` output into a script.
 
 ### query — Filter and retrieve rules from an index
 
@@ -97,9 +107,16 @@ repo-rules-agent eval <source> [--repo <path>] [-o results.json] [--judge-model 
 ### install-skill — Install this skill
 
 ```bash
-repo-rules-agent install-skill [--scope project|user] [--force]
+repo-rules-agent install-skill [--target claude|codex|cursor|all] [--scope project|user] [--force]
 ```
 
-- `--scope project` (default): `.claude/skills/repo-rules/SKILL.md` in the current directory.
-- `--scope user`: `~/.claude/skills/repo-rules/SKILL.md`.
-- `--force`: overwrite without confirmation.
+The same SKILL.md works across Claude Code, Codex CLI, and Cursor. Only the destination directory differs:
+
+| Target | Project scope | User scope |
+|---|---|---|
+| `claude` (default) | `.claude/skills/repo-rules/SKILL.md` | `~/.claude/skills/repo-rules/SKILL.md` |
+| `codex` | n/a (use `--scope user`) | `~/.codex/skills/repo-rules/SKILL.md` |
+| `cursor` | `.cursor/skills/repo-rules/SKILL.md` | `~/.cursor/skills/repo-rules/SKILL.md` |
+| `all` | claude + cursor (codex skipped) | claude + codex + cursor |
+
+- `--force`: overwrite any existing SKILL.md without confirmation.
