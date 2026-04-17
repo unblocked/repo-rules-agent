@@ -163,7 +163,7 @@ def _format_rules_for_judge(rules: list[Rule]) -> str:
     lines = []
     for i, rule in enumerate(rules, 1):
         lines.append(
-            f"{i}. **{rule.title}** [{rule.category.value}] "
+            f"{i}. **{rule.title}** [{rule.category}] "
             f"(severity: {rule.severity}, scope: {rule.scope})\n"
             f"   {rule.description}\n"
             f"   Languages: {', '.join(rule.languages)} | "
